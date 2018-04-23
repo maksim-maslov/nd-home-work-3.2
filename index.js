@@ -8,8 +8,13 @@ const mongodb = require('mongodb');
 const MongoClient = mongodb.MongoClient;
 const url = 'mongodb://localhost:27017/test';
 
-
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+
+app.get('/', (req, res) => {
+  res.sendFile(`${__dirname}\\index.html`);
+});
 
 
 app.post('/users/', (req, res) => {
