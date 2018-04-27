@@ -29,6 +29,14 @@
       display: block;
     }
 
+    .updateBtn {
+      cursor: pointer;
+    }
+
+    .deleteBtn {
+      cursor: pointer;
+    }
+
   </style>
 
 </head>
@@ -41,7 +49,7 @@
           <h3 class="panel-title">Document</h3>
         </div>
         <div class="panel-body">
-          <form accept-charset="UTF-8" role="form" method="POST" action="/users">
+          <form accept-charset="UTF-8" role="form" method="POST" action="/contacts">
             <fieldset>
               <div class="form-group">
                 <input class="form-control" type="text" name="fName" placeholder="Имя*" required />
@@ -53,23 +61,176 @@
                 <input class="form-control" type="tel" name="phone" placeholder="Телефон" pattern="[\+]\d{1}\s[\(]\d{3}[\)]\s\d{3}[\-]\d{2}[\-]\d{2}" minlength="18" maxlength="18" />
                 <span class="form-error">Это поле должно содержать телефон в формате +7 (123) 456-78-90</span>
               </div>  
-              <input class="btn btn-lg btn-block" type="submit" value="Send">
+              <input class="btn btn-lg btn-block" type="submit" value="Добавить контакт">
             </fieldset>
           </form>
-        </div>
-        <div class="panel-body">
-         <form accept-charset="UTF-8" role="form" method="GET" action="/users">
+        </div> 
+        <div class="panel-body panel-body__search">
+         <form accept-charset="UTF-8" role="form">
             <fieldset>
               <div class="form-group">
                 <input class="form-control" type="text" name="q" placeholder="Поиск" />
               </div>
-              <input class="btn btn-lg btn-block" type="submit" value="Search">
+              <input class="btn btn-lg btn-block" type="submit" value="Найти">
             </fieldset>
           </form>         
-        </div>
+        </div> 
+        <div class="panel-body panel-body__contacts">          
+        </div>         
       </div>
     </div>
   </div>  
 </div>
+<script type="text/javascript">
+
+  'use strict';
+
+  const contacts = document.querySelector('.panel-body__contacts');
+
+  const search = document.querySelector('.panel-body__search .btn');
+  const q = document.querySelector('.panel-body__search .form-control');
+
+  search.addEventListener('click', ev => {
+
+    ev.preventDefault();
+    
+    getData(`./contacts?q=${q.value}`)
+      .then(result => {
+        localStorage.contactsJSON = result;    
+        createContacts();       
+      });
+
+    q.value = '';
+  });
+
+  function getData(url) {
+    return new Promise((done, fail) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.addEventListener('error', e => fail(xhr));
+      xhr.addEventListener('load', e => {
+        if (200 <= xhr.status && xhr.status < 300) {
+          done(xhr.responseText);
+          return;        
+        }
+        fail(xhr.statusText);
+      });
+      xhr.send();
+    });
+  }
+
+  function sendData(url, method, data = '') {
+    return new Promise((done, fail) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url, false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.addEventListener('error', e => fail(xhr));
+      xhr.addEventListener('load', e => {
+        if (200 <= xhr.status && xhr.status < 300) {
+          done(url);
+          return;        
+        }
+        fail(xhr.statusText);
+      });
+      xhr.send(data);
+    });
+  }
+
+  getData('./contacts/')
+    .then(result => {
+      localStorage.contactsJSON = result;    
+      createContacts();       
+    });
+
+  function createContacts() {
+
+    contacts.textContent = '';
+
+    const contactsJSON = JSON.parse(localStorage.contactsJSON);
+
+    const fragment = contactsJSON.reduce((memo, el) => {  
+
+      const wrap = document.createElement('div');
+      wrap.className = 'panel-body'; 
+      wrap.dataset.id = el._id;
+
+      const fieldset = document.createElement('fieldset');
+
+      for (let key in el) {  
+
+        if (key != '_id') {
+          const div = document.createElement('div');
+          div.className = 'form-group';
+
+          const input = document.createElement('input');
+          input.className = 'form-control';  
+          input.type = 'text';
+          input.name = key;
+          input.value = el[key];
+          div.appendChild(input); 
+          
+          fieldset.appendChild(div);
+        }            
+      }
+
+      const updateBtn = document.createElement('div');
+      updateBtn.textContent = 'update';
+      updateBtn.className = 'form-group';
+      updateBtn.classList.add('updateBtn');
+      updateBtn.dataset.id = el._id;
+      fieldset.appendChild(updateBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.textContent = 'delete';
+      deleteBtn.className = 'form-group';
+      deleteBtn.classList.add('deleteBtn');
+      deleteBtn.dataset.id = el._id;
+      fieldset.appendChild(deleteBtn);
+
+      wrap.appendChild(fieldset);
+      memo.appendChild(wrap);
+      return memo;
+      
+      }, document.createDocumentFragment());   
+
+    contacts.appendChild(fragment); 
+
+  }
+
+  document.addEventListener('click', ev => {
+
+    if (ev.target.classList.contains('updateBtn')) {
+      const element = ev.currentTarget.querySelector(`[data-id="${ev.target.dataset.id}"]`);
+
+      const fName = element.querySelector('[name="fName"]').value;
+      const lName = element.querySelector('[name="lName"]').value;
+      const phone = element.querySelector('[name="phone"]').value;
+
+      const data = JSON.stringify({fName: fName, lName: lName, phone: phone});
+
+      sendData(`./contacts/${ev.target.dataset.id}`, 'PUT', data);
+
+      getData('./contacts/')
+        .then(result => {
+          localStorage.contactsJSON = result;    
+          createContacts();       
+        });
+    }   
+
+    if (ev.target.classList.contains('deleteBtn')) {
+      const element = ev.currentTarget.querySelector(`[data-id="${ev.target.dataset.id}"]`);
+
+      sendData(`./contacts/${ev.target.dataset.id}`, 'DELETE');
+
+      getData('./contacts/')
+        .then(result => {
+          localStorage.contactsJSON = result;    
+          createContacts();       
+        });
+    }     
+  });
+
+</script>
+
 </body>
 </html>

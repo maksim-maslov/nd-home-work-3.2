@@ -12,12 +12,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 
+
 app.get('/', (req, res) => {
   res.sendFile(`${__dirname}\\index.html`);
 });
 
 
-app.post('/users/', (req, res) => {
+
+app.post('/contacts/', (req, res) => {
 
   MongoClient.connect(url, (err, db) => {
     if (err) {
@@ -27,20 +29,14 @@ app.post('/users/', (req, res) => {
       console.log('Соединение установлено для', url);
 
       const collection = db.collection('test');
-      collection.insert({fName: 'Aleksey', lName: 'Alekseev', phone: '+79212858585'});
-      collection.insert({fName: 'Tanya', lName: 'Andreeva', phone: '+79113114141'});
-      collection.insert({fName: 'Nastya', lName: 'Kulikova', phone: '+79021300909'});
-      collection.insert({fName: 'Anya', lName: 'Sergeeva', phone: '+79600258989'});
 
       collection.insert(req.body, (err, result) => {
         if (err) {
           res.status(404).send('Bad request...');  
         } else {
-          res.send(result.ops);
+          res.sendFile(`${__dirname}\\index.html`);
         }
       });
-
-      // collection.remove();
 
       db.close();
 
@@ -50,7 +46,7 @@ app.post('/users/', (req, res) => {
 
 
 
-app.get('/users/', (req, res) => { 
+app.get('/contacts/', (req, res) => { 
 
   if (req.query.q) {
 
@@ -63,7 +59,9 @@ app.get('/users/', (req, res) => {
 
         const collection = db.collection('test');
 
-        collection.find({$or: [{fName: req.query.q}, {lName: req.query.q}, {phone: req.query.q}]}).toArray((err, result) => {
+        const regex = `.*${req.query.q}.*`;
+
+        collection.find({$or: [{_id: {$regex: regex}}, {fName: {$regex: regex}}, {lName: {$regex: regex}}, {phone: {$regex: regex}}]}).toArray((err, result) => {
           if (err) {
             console.log(err);
           } else if (result.length) {
@@ -103,13 +101,12 @@ app.get('/users/', (req, res) => {
 
       }
     });
-  }
-    
+  }    
 });
 
 
 
-app.put('/users/:userName', (req, res) => {
+app.put('/contacts/:id', (req, res) => {
 
   MongoClient.connect(url, (err, db) => {
     if (err) {
@@ -120,7 +117,10 @@ app.put('/users/:userName', (req, res) => {
 
       const collection = db.collection('test');
 
-      collection.update({fName: req.params.userName}, {$set: {fName: req.body.fName}}, {multi: true});
+      const ObjectId = mongodb.ObjectID;
+      const id = new ObjectId(req.params.id);     
+
+      collection.update({_id: id}, {$set: {fName: req.body.fName, lName: req.body.lName, phone: req.body.phone}});
 
       collection.find().toArray((err, result) => {
         if (err) {
@@ -140,7 +140,7 @@ app.put('/users/:userName', (req, res) => {
 
 
 
-app.delete('/users/:userName', (req, res) => {
+app.delete('/contacts/:id', (req, res) => {
 
   MongoClient.connect(url, (err, db) => {
     if (err) {
@@ -151,7 +151,10 @@ app.delete('/users/:userName', (req, res) => {
 
       const collection = db.collection('test');
 
-      collection.remove({fName: req.params.userName});      
+      const ObjectId = mongodb.ObjectID;
+      const id = new ObjectId(req.params.id); 
+
+      collection.remove({_id: id});      
 
       collection.find().toArray((err, result) => {
         if (err) {
